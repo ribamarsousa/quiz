@@ -64,6 +64,15 @@ export default class QuestaoModel {
     );
   }
 
+  //fromObject - Transformar um JSON em um objeto de Questao
+  static criarUsandoObjeto(obj: QuestaoModel): QuestaoModel {
+    const respostas = obj.respostas.map((resp) =>
+      RespostaModel.criarUsandoObjeto(resp)
+    );
+    return new QuestaoModel(obj.id, obj.enunciado, respostas, obj.acertou);
+  }
+
+  //toObject - transformar em um Json
   paraObjeto() {
     return {
       id: this.#id,

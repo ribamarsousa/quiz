@@ -1,24 +1,16 @@
 import { useEffect, useState } from "react";
 import Questionario from "../components/Questionario";
 import QuestaoModel from "../model/questao";
-import RespostaModel from "../model/resposta";
+import { useRouter } from "next/router";
 
 const BASE_URL = "http://localhost:3000/api";
 
-const questaoMock = new QuestaoModel(
-  306,
-  "Qual bicho transmite a Doença de Chagas?",
-  [
-    RespostaModel.errada("Abelha"),
-    RespostaModel.errada("Barata"),
-    RespostaModel.errada("Pulga"),
-    RespostaModel.certa("Barbeiro"),
-  ]
-);
-
 export default function Home() {
+  const router = useRouter();
+
   const [idsDasQuestoes, setIdsDasQuestoes] = useState<number[]>([]);
-  const [questao, setQuestao] = useState<QuestaoModel>(questaoMock);
+  const [questao, setQuestao] = useState<QuestaoModel>();
+  const [respostasCertas, setRespostasCertas] = useState<number>(0);
 
   async function carregarIdsDasQuestoes() {
     const resp = await fetch(`${BASE_URL}/questionario`);
@@ -30,7 +22,8 @@ export default function Home() {
   async function carregarQuestao(idQuestao: number) {
     const resp = await fetch(`${BASE_URL}/questoes/${idQuestao}`);
     const json = await resp.json();
-    console.log(json);
+    const novaQuestao = QuestaoModel.criarUsandoObjeto(json);
+    setQuestao(novaQuestao);
   }
 
   useEffect(() => {
@@ -41,16 +34,46 @@ export default function Home() {
     idsDasQuestoes.length > 0 && carregarQuestao(idsDasQuestoes[0]);
   }, [idsDasQuestoes]); // quando mudar os Ids carrega novamente
 
-  function questaoRespondida(questao: QuestaoModel) {}
+  function questaoRespondida(questaoRespondida: QuestaoModel) {
+    setQuestao(questaoRespondida);
+    const acertou = questaoRespondida.acertou;
+    setRespostasCertas(respostasCertas + (acertou ? 1 : 0));
+  }
 
-  function irPraProximoPasso() {}
+  function idProximaPergunta() {
+    if (questao) {
+      const proximoIndice = idsDasQuestoes.indexOf(questao.id) + 1;
+      return idsDasQuestoes[proximoIndice];
+    }
+  }
 
-  return (
+  function irPraProximoPasso() {
+    const proximoId = idProximaPergunta();
+    proximoId ? irPraProximaQuestao(proximoId) : finalizar();
+  }
+
+  function irPraProximaQuestao(proximoId: number) {
+    carregarQuestao(proximoId);
+  }
+
+  function finalizar() {
+    router.push({
+      pathname: "/resultado",
+      query: {
+        total: idsDasQuestoes.length,
+        certas: respostasCertas,
+      },
+    });
+  }
+
+  return questao ? (
     <Questionario
       questao={questao}
-      ultimaQuestao={false}
+      ultimaQuestao={idProximaPergunta() === undefined}
       questaoRespondida={questaoRespondida}
       irPraProximoPasso={irPraProximoPasso}
     />
+  ) : (
+    false
   );
 }
